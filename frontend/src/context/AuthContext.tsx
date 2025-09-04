@@ -39,12 +39,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Vérifier l'état d'authentification au chargement
   const checkAuth = async () => {
-    setAuthState({ isAuthenticated: false, loading: false });
+    try {
+      setAuthState(prev => ({ ...prev, loading: true }));
+      
+      // Essayer d'accéder à une route protégée pour vérifier l'auth
+      const response = await axios.get('http://localhost:8000/admin/check-auth', {
+        withCredentials: true,
+      });
+      
+      if (response.status === 200) {
+        setAuthState({ isAuthenticated: true, loading: false });
+      } else {
+        setAuthState({ isAuthenticated: false, loading: false });
+      }
+    } catch (error) {
+      setAuthState({ isAuthenticated: false, loading: false });
+    }
   };
 
-  // Désactiver l'appel à checkAuth au montage
+  // Vérifier l'auth au montage du composant
   useEffect(() => {
-    setAuthState({ isAuthenticated: false, loading: false });
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
