@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, UserPlus } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface LoginFormProps {
-  onLogin: (credentials: { email: string; password: string }) => void;
   onBack: () => void;
   onShowRegister: () => void;
   isLoading?: boolean;
@@ -10,12 +10,12 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ 
-  onLogin, 
   onBack, 
   onShowRegister, 
   isLoading = false, 
   error 
 }) => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -56,10 +56,15 @@ const LoginForm: React.FC<LoginFormProps> = ({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      onLogin(formData);
+      try {
+        await login(formData.email, formData.password);  // Appeler login du contexte
+      } catch (err) {
+        console.error(err);
+        setFormErrors({ ...formErrors, email: 'Identifiants incorrects' });  // Afficher une erreur si la connexion échoue
+      }
     }
   };
 
@@ -110,9 +115,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] ${
-                  formErrors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="votre@email.com"
                 disabled={isLoading}
               />
@@ -134,9 +137,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full pl-10 pr-12 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] ${
-                  formErrors.password ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full pl-10 pr-12 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] ${formErrors.password ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Votre mot de passe"
                 disabled={isLoading}
               />
@@ -152,25 +153,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
             {formErrors.password && (
               <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
             )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="w-4 h-4 text-[#0D6EFD] border-gray-300 rounded focus:ring-[#0D6EFD]"
-                disabled={isLoading}
-              />
-              <span className="ml-2 text-sm text-gray-600">Se souvenir de moi</span>
-            </label>
-            
-            <button
-              type="button"
-              className="text-sm text-[#0D6EFD] hover:text-blue-600 transition-colors"
-              disabled={isLoading}
-            >
-              Mot de passe oublié ?
-            </button>
           </div>
 
           <button
@@ -205,22 +187,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
           </button>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-md">
-          <h4 className="text-sm font-medium text-gray-800 mb-2">Comptes de démonstration :</h4>
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Client:</p>
-              <p className="text-xs text-gray-600">Email: demo@familyforage.mg</p>
-              <p className="text-xs text-gray-600">Mot de passe: demo123</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Administrateur:</p>
-              <p className="text-xs text-gray-600">Email: admin@familyforage.mg</p>
-              <p className="text-xs text-gray-600">Mot de passe: admin123</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
