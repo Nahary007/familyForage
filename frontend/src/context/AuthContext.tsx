@@ -42,11 +42,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setAuthState(prev => ({ ...prev, loading: true }));
       
-      // Essayer d'accéder à une route protégée pour vérifier l'auth
       const response = await axios.get('http://localhost:8000/admin/check-auth', {
         withCredentials: true,
+        validateStatus: (status) => status < 500 // éviter d'afficher 401 dans la console
       });
-      
+
       if (response.status === 200) {
         setAuthState({ isAuthenticated: true, loading: false });
       } else {
@@ -56,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAuthState({ isAuthenticated: false, loading: false });
     }
   };
+
 
   // Vérifier l'auth au montage du composant
   useEffect(() => {
