@@ -4,12 +4,19 @@ import axios from 'axios';
 interface AuthState {
   isAuthenticated: boolean;
   loading: boolean;
+  user: User | null;
 }
 
 interface RegisterData {
   name: string;
   email: string;
   password: string;
+}
+
+interface User {
+  email: string;
+  name: string;
+  role: 'admin' | 'client' | 'media_contributor' | 'visitor';
 }
 
 interface AuthContextType {
@@ -25,7 +32,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
-    loading: true, // Commencer en loading pour vérifier l'auth
+    loading: true,
+    user: null,
   });
 
   axios.defaults.withCredentials = true;
@@ -37,28 +45,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return '';
   };
 
-  // Vérifier l'état d'authentification au chargement
   const checkAuth = async () => {
     try {
       setAuthState(prev => ({ ...prev, loading: true }));
-      
+
       const response = await axios.get('http://localhost:8000/admin/check-auth', {
         withCredentials: true,
-        validateStatus: (status) => status < 500 // éviter d'afficher 401 dans la console
+        validateStatus: (status) => status < 500
       });
 
-      if (response.status === 200) {
-        setAuthState({ isAuthenticated: true, loading: false });
+      if (response.status === 200 && response.data.user) {
+        setAuthState({
+          isAuthenticated: true,
+          loading: false,
+          user: response.data.user,
+        });
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       } else {
-        setAuthState({ isAuthenticated: false, loading: false });
+        setAuthState({ isAuthenticated: false, loading: false, user: null });
+        localStorage.removeItem("user");
       }
     } catch (error) {
-      setAuthState({ isAuthenticated: false, loading: false });
+      setAuthState({ isAuthenticated: false, loading: false, user: null });
     }
   };
 
-
-  // Vérifier l'auth au montage du composant
   useEffect(() => {
     checkAuth();
   }, []);
@@ -68,7 +79,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       await axios.get('http://localhost:8000/sanctum/csrf-cookie');
-
       const xsrfToken = getXsrfToken();
 
       const res = await axios.post(
@@ -84,25 +94,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (res.status === 200) {
-        setAuthState({ isAuthenticated: true, loading: false });
-          console.log("Token JWT:", res.data.token);
+        const token = res.data.token;
+        const userData: User = res.data.user;
 
-        // Tu peux aussi le sauvegarder dans localStorage
-        // localStorage.setItem("jwt_token", res.data.token);
+        localStorage.setItem("jwt_token", token);
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        setAuthState({
+          isAuthenticated: true,
+          loading: false,
+          user: userData,
+        });
       } else {
-        setAuthState((prev) => ({ ...prev, loading: false }));
         throw new Error('Identifiants invalides');
       }
     } catch (error: any) {
       setAuthState((prev) => ({ ...prev, loading: false }));
-
-      if (error.response?.status === 401) {
-        throw new Error('Identifiants incorrects.');
-      } else if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      } else {
-        throw new Error("Erreur lors de la connexion. Veuillez réessayer.");
-      }
+      throw new Error(error.response?.data?.message || "Erreur de connexion.");
     }
   };
 
@@ -111,7 +119,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       await axios.get('http://localhost:8000/sanctum/csrf-cookie');
-
       const xsrfToken = getXsrfToken();
 
       const res = await axios.post(
@@ -127,19 +134,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (res.status === 201 || res.status === 200) {
-        setAuthState({ isAuthenticated: true, loading: false });
+        const userData: User = res.data.user;
+        setAuthState({ isAuthenticated: true, loading: false, user: userData });
       } else {
-        setAuthState((prev) => ({ ...prev, loading: false }));
         throw new Error("L'inscription a échoué.");
       }
     } catch (error: any) {
       setAuthState((prev) => ({ ...prev, loading: false }));
-
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      } else {
-        throw new Error("Erreur lors de l'inscription. Veuillez réessayer.");
-      }
+      throw new Error(error.response?.data?.message || "Erreur lors de l'inscription.");
     }
   };
 
@@ -149,7 +151,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
-      setAuthState({ isAuthenticated: false, loading: false });
+      setAuthState({ isAuthenticated: false, loading: false, user: null });
+      localStorage.removeItem("jwt_token");
+      localStorage.removeItem("user");
     }
   };
 
@@ -162,8 +166,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

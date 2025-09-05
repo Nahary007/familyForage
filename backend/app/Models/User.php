@@ -10,7 +10,7 @@ class User extends Authenticatable implements JWTSubject{
     use HasFactory;
 
     // Définir les attributs assignables
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password','role'];
 
     // Définir les attributs qui doivent être castés
     protected $casts = [

@@ -11,57 +11,27 @@ import Footer from './components/Footer';
 import DashboardApp from './dashboard/App';
 import AdminApp from './admin/App';
 import AuthWrapper from './components/auth/AuthWrapper';
+import { useAuth } from './context/AuthContext';
 
 type AppView = 'main' | 'auth' | 'dashboard' | 'admin';
 
-interface User {
-  email: string;
-  name: string;
-  role: 'admin' | 'client' | 'media_contributor' | 'visitor';
-}
-
 function App() {
+  const { authState, login, logout } = useAuth();
+  const { user, isAuthenticated, loading } = authState;
+
   const [currentView, setCurrentView] = useState<AppView>('main');
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Redirection automatique selon rôle
   useEffect(() => {
-    // Update page title
-    document.title = "FAMILY FORAGE - Solutions hydrauliques durables à Madagascar";
-    
-    // Add meta description for SEO
-    const metaDescription = document.createElement('meta');
-    metaDescription.name = 'description';
-    metaDescription.content = 'FAMILY FORAGE - Spécialiste en forage de puits, pompe solaire eau, et solutions hydrauliques durables à Madagascar. Plus de 10 ans d\'expérience.';
-    document.head.appendChild(metaDescription);
-    
-    // Add meta keywords for SEO
-    const metaKeywords = document.createElement('meta');
-    metaKeywords.name = 'keywords';
-    metaKeywords.content = 'forage de puits Madagascar, pompe solaire eau, solutions hydrauliques durables, études géophysiques, traitement eau Madagascar';
-    document.head.appendChild(metaKeywords);
-    
-    return () => {
-      document.head.removeChild(metaDescription);
-      document.head.removeChild(metaKeywords);
-    };
-  }, []);
-
-  // Check URL for dashboard access (simple demo)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('dashboard') === 'true' && user) {
+    if (!loading && isAuthenticated && user) {
       if (user.role === 'admin') {
         setCurrentView('admin');
       } else {
         setCurrentView('dashboard');
       }
     }
-    if (urlParams.get('admin') === 'true' && user?.role === 'admin') {
-      setCurrentView('admin');
-    }
-  }, [user]);
+  }, [loading, isAuthenticated, user]);
 
   const handleShowAuth = () => {
     setCurrentView('auth');
@@ -69,45 +39,16 @@ function App() {
   };
 
   const handleLogin = async (credentials: { email: string; password: string }) => {
-    setAuthLoading(true);
-    setAuthError(null);
-
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Demo credentials check
-      if (credentials.email === 'demo@familyforage.mg' && credentials.password === 'demo123') {
-        const userData = {
-          email: credentials.email,
-          name: 'Jean Rakoto',
-          role: 'client' as const
-        };
-        setUser(userData);
-        setCurrentView('dashboard');
-      } else if (credentials.email === 'admin@familyforage.mg' && credentials.password === 'admin123') {
-        const userData = {
-          email: credentials.email,
-          name: 'Administrateur FAMILY FORAGE',
-          role: 'admin' as const
-        };
-        setUser(userData);
-        setCurrentView('admin');
-      } else {
-        throw new Error('Email ou mot de passe incorrect');
-      }
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Une erreur est survenue');
-    } finally {
-      setAuthLoading(false);
+      await login(credentials.email, credentials.password);
+    } catch (error: any) {
+      setAuthError(error.message || "Erreur de connexion");
     }
   };
 
   const handleLogout = () => {
-    setUser(null);
+    logout();
     setCurrentView('main');
-    // Clear URL parameters
-    window.history.replaceState({}, document.title, window.location.pathname);
   };
 
   const handleBackToMain = () => {
@@ -115,24 +56,26 @@ function App() {
     setAuthError(null);
   };
 
-  // Render based on current view
+  // Render en fonction du rôle
+  if (loading) return <div>Chargement...</div>;
+
   switch (currentView) {
     case 'auth':
       return (
         <AuthWrapper
           onLogin={handleLogin}
           onBack={handleBackToMain}
-          isLoading={authLoading}
+          isLoading={loading}
           error={authError ?? undefined}
         />
       );
-    
+
     case 'admin':
       return user?.role === 'admin' ? <AdminApp onLogout={handleLogout} /> : null;
-    
+
     case 'dashboard':
       return user ? <DashboardApp onLogout={handleLogout} /> : null;
-    
+
     default:
       return (
         <div className="font-sans">
@@ -145,16 +88,18 @@ function App() {
           <Testimonials />
           <Contact />
           <Footer />
-          
+
           {/* Client Space Access Button */}
-          <div className="fixed bottom-4 right-4 z-50">
-            <button
-              onClick={handleShowAuth}
-              className="bg-[#0D6EFD] hover:bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg transition-colors text-sm"
-            >
-              🔐 Espace Client
-            </button>
-          </div>
+          {!isAuthenticated && (
+            <div className="fixed bottom-4 right-4 z-50">
+              <button
+                onClick={handleShowAuth}
+                className="bg-[#0D6EFD] hover:bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg transition-colors text-sm"
+              >
+                🔐 Espace Client
+              </button>
+            </div>
+          )}
         </div>
       );
   }
