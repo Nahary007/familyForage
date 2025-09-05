@@ -12,9 +12,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Ajoutez cette route HORS du middleware group pour tester
 Route::get('/admin/check-auth-test', fn () => response()->json(['test' => true]));
 
-Route::middleware('auth:sanctum')->group(function () {
-
-    //checker si l'utilsateur est connecté
-    Route::get('/admin/check-auth', fn () => response()->json(['authenticated' => true]));
-
+Route::middleware('auth:api')->group(function () {
+    Route::get('/admin/check-auth', [AuthController::class, 'checkAuth']);
 });
+

@@ -46,15 +46,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const checkAuth = async () => {
+    const token = localStorage.getItem("jwt_token");
+
+    if (!token) {
+      setAuthState({ isAuthenticated: false, loading: false, user: null });
+      return;
+    }
+
     try {
       setAuthState(prev => ({ ...prev, loading: true }));
 
-      const response = await axios.get('http://localhost:8000/admin/check-auth', {
+      // Attacher le token
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      const response = await axios.get("http://localhost:8000/admin/check-auth", {
         withCredentials: true,
-        validateStatus: (status) => status < 500
+        validateStatus: (status) => status < 500,
       });
 
-      if (response.status === 200 && response.data.user) {
+      if (response.status === 200 && response.data.authenticated && response.data.user) {
         setAuthState({
           isAuthenticated: true,
           loading: false,
@@ -62,13 +72,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         localStorage.setItem("user", JSON.stringify(response.data.user));
       } else {
-        setAuthState({ isAuthenticated: false, loading: false, user: null });
-        localStorage.removeItem("user");
+        logout(); // token invalide → déconnexion
       }
     } catch (error) {
-      setAuthState({ isAuthenticated: false, loading: false, user: null });
+      logout();
     }
   };
+
 
   useEffect(() => {
     checkAuth();
