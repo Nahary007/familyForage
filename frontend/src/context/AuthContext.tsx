@@ -85,6 +85,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (res.status === 200) {
         setAuthState({ isAuthenticated: true, loading: false });
+          console.log("Token JWT:", res.data.token);
+
+        // Tu peux aussi le sauvegarder dans localStorage
+        // localStorage.setItem("jwt_token", res.data.token);
       } else {
         setAuthState((prev) => ({ ...prev, loading: false }));
         throw new Error('Identifiants invalides');
