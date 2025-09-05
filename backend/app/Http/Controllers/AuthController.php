@@ -8,27 +8,33 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-
-
-public function login(Request $request)
-{
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
-
-    if (!$token = JWTAuth::attempt($credentials)) {
+    public function checkAuth(Request $request)
+    {
         return response()->json([
-            'message' => 'Email ou mot de passe incorrect.'
-        ], 401);
+            'authenticated' => true,
+            'user' => $request->user(),
+        ]);
     }
 
-    return response()->json([
-        'message' => 'Connexion réussie',
-        'user' => Auth::user(),
-        'token' => $token,
-    ]);
-}
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json([
+                'message' => 'Email ou mot de passe incorrect.'
+            ], 401);
+        }
+
+        return response()->json([
+            'message' => 'Connexion réussie',
+            'user' => Auth::user(),
+            'token' => $token,
+        ]);
+    }
 
 
     public function logout(Request $request)
