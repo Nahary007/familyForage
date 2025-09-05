@@ -4,9 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Controllers\CsrfCookieController;
 use App\Http\Controllers\AuthController;
 
-Route::get('/sanctum/csrf-cookie', [CsrfCookieController::class, 'show'])->name('login');
+Route::get('/sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 // Ajoutez cette route HORS du middleware group pour tester
 Route::get('/admin/check-auth-test', fn () => response()->json(['test' => true]));
 
